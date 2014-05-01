@@ -9,3 +9,6 @@ resource/unittest/pipelines_test_resources/
 
 *.egg/
 src/dissect.egg-info/
+
+build/
+dist/
