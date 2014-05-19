@@ -1,7 +1,7 @@
 '''
 Created on Oct 4, 2012
 
-@author: Georgiana Dinu, Pham The Nghia
+@author: Georgiana Dinu, Pham The Nghia, Antonin Delpeuch
 '''
 
 import numpy as np
@@ -89,8 +89,8 @@ class Linalg(object):
         """
         Performs Ridge Regression.
 
-        This method use the general formula:
-            ...
+        This method uses the general formula:
+            :math:`X = (A^t A + \\lambda I)^{-1}A^t B`
         to solve the problem:
             :math:`X = argmin(||AX - B||_2 + \\lambda||X||_2)`
 
@@ -104,7 +104,7 @@ class Linalg(object):
             solution X of type Matrix
 
         """
-
+        
         matrix_a._assert_same_type(matrix_b)
         # TODO: check out where to define this assert
         assert_same_shape(matrix_a, matrix_b, 0)
@@ -138,8 +138,158 @@ class Linalg(object):
 
         dist = (matrix_a * result - matrix_b).norm()
         S_trace = matrix_a_t.multiply(tmp_res).sum()
-
         return result, S_trace, dist
+
+    # This quantity is the "P_mu" from the article (Ji and Ye 2009)
+    @staticmethod # numpy inputs
+    def _intermediate_cost(matrix_a, matrix_b, new_W, old_W, mu):
+        diff_W = new_W - old_W
+        grad_f = Linalg._fitness_gradient(matrix_a, matrix_b, old_W)
+        return (Linalg._fitness(matrix_a, matrix_b, old_W) +
+                np.trace(np.dot(diff_W.transpose(), grad_f)) +
+                (mu/2)*Linalg._frobenius_norm_squared(diff_W))
+
+    @staticmethod # numpy inputs
+    def _frobenius_norm_squared(W):
+        W2 = np.multiply(W,W)
+        return np.real(np.sum(W2))
+
+    @staticmethod # numpy inputs
+    def _fitness(inputs, outputs, A):
+        return Linalg._frobenius_norm_squared(np.dot(inputs, A) - outputs)
+
+    @staticmethod # numpy inputs
+    def _fitness_gradient(inputs, outputs, A):
+        return 2* (np.dot(inputs.transpose(), np.dot(inputs,A)) - np.dot(inputs.transpose(), outputs))
+
+
+    @staticmethod # numpy inputs
+    def _tracenorm(W):
+        U, s, V = np.linalg.svd(W)
+        return sum(s)
+
+    @staticmethod # numpy inputs
+    def _next_tracenorm_guess(matrix_a, matrix_b, lmbd, mu, current_W):
+        # Computes the next estimate of A using the first gradient algorithm
+        # from (Ji and Ye 2009)
+        p = np.shape(matrix_a)[0]
+        q = np.shape(matrix_a)[1]
+        r = np.shape(matrix_b)[1]
+        W = current_W
+
+        matrix_a_t = np.transpose(matrix_a)
+        utu = np.dot(matrix_a_t, matrix_a)
+        uv = np.dot(matrix_a_t, matrix_b)
+
+        gradient = np.dot(utu,W) - uv
+        C = W - (1/mu) * gradient
+        U, s, V = np.linalg.svd(C)
+
+        s = s - (lmbd/(2*mu))*np.ones(np.shape(s)[0])
+        sz = np.array([s, np.zeros(np.shape(s)[0])])
+        final_s = sz.max(0)
+        lu = np.shape(U)[1]
+        lv = np.shape(V)[0]
+        S = np.zeros((lu, lv), dtype=complex)
+        rk = min(lu, lv)
+        S[:rk,:rk] = np.diag(final_s)
+        return np.dot(U, np.dot(S, V))
+
+
+    @staticmethod
+    def tracenorm_regression(matrix_a , matrix_b, lambda_, iterations):
+        #log.print_info(logger, "In Tracenorm regression..", 4)
+        #log.print_matrix_info(logger, matrix_a, 5, "Input matrix A:")
+        #log.print_matrix_info(logger, matrix_b, 5, "Input matrix B:")
+        """
+        Performs Trace Norm Regression.
+
+        This method uses approximate gradient descent
+        to solve the problem:
+            :math:`X = argmin(||AX - B||_2 + \\lambda||X||_*)`
+        where :math:`||X||_*` is the trace norm of :math:`X`, the sum of its
+        singular values.
+        It is implemented for dense matrices only.
+        The algorithm is the Extended Gradient Algorithm from (Ji and Ye, 2009).
+
+        Args:
+            matrix_a: input matrix A, of type Matrix
+            matrix_b: input matrix A, of type Matrix
+            lambda_: scalar, lambda parameter
+            intercept: bool. If True intercept is used. Optional, default False.
+
+        Returns:
+            solution X of type Matrix
+
+        """
+
+        ##### Modification of the algorithm !
+        # start with the ridge estimate
+        print "Computing initial Ridge estimate"
+        W = Linalg.ridge_regression(matrix_a, matrix_b, 2, intercept=False)[0]
+
+        # TODO remove this
+        matrix_a = DenseMatrix(matrix_a).mat
+        matrix_b = DenseMatrix(matrix_b).mat
+        W = DenseMatrix(W).mat
+
+        # Sub-expressions reused at various places in the code
+        matrix_a_t = matrix_a.transpose()
+        at_times_a = np.dot(matrix_a_t, matrix_a)
+
+        # Epsilon: to ensure that our bound on the Lipschitz constant is large enough
+        epsilon = 0.05
+        # Expression of the bound of the Lipschitz constant of the cost function
+        L_bound = (1+epsilon)*2*Linalg._frobenius_norm_squared(at_times_a)
+        print "Bound on L is "+str(L_bound)
+        # Current "guess" of the local Lipschitz constant
+        L = 100
+        # Factor by which L should be increased when it happens to be too small
+        gamma = 1.5
+
+        #### Modification of the algorithm !
+        # start with the maximum Lipschitz constant
+        # (to avoid more SVDs during the increase of L)
+        # L = L_bound
+
+
+        p = matrix_a.shape[0]
+        q = matrix_a.shape[1]
+        # r = q
+        assert_same_shape(matrix_a, matrix_b, 0)
+
+
+        costs = []
+        for i in range(iterations):
+            print "Iteration "+str(i)
+            current_fitness = Linalg._fitness(matrix_a, matrix_b, W)
+            regularization_term = Linalg._tracenorm(W)
+            current_cost = current_fitness + lambda_ * regularization_term
+            costs.append(current_cost)
+            print "Current cost is "+str(current_cost)
+            print "Current fitness is "+str(current_fitness)
+            print "Trace norm is "+str(regularization_term)
+
+            next_W = Linalg._next_tracenorm_guess(matrix_a, matrix_b, lambda_, L, W)
+
+            #### Modification of the algorithm !
+            # as we start directly with the maximum Lipschitz constant
+            # we don't need to perform the following check
+
+            # print "Intermediate cost is "+str(Linalg._intermediate_cost(matrix_a, matrix_b, next_W, W, L))
+
+            while(Linalg._fitness(matrix_a, matrix_b, next_W) >
+                    Linalg._intermediate_cost(matrix_a, matrix_b, next_W, W, L)):
+                if L > L_bound:
+                    print "Trace Norm Regression: numerical error detected at iteration "+str(i)
+                    break
+                L = gamma * L
+                next_W = Linalg._next_tracenorm_guess(matrix_a, matrix_b, lambda_, L, W)
+
+            W = next_W
+
+        W = np.real(W)
+        return SparseMatrix(W), costs
 
     @classmethod
     def lstsq_regression(cls, matrix_a, matrix_b, intercept=False):
