@@ -169,7 +169,7 @@ class Linalg(object):
         return sum(s)
 
     @staticmethod # numpy inputs
-    def _next_tracenorm_guess(matrix_a, matrix_b, lmbd, mu, current_W):
+    def _next_tracenorm_guess(matrix_a, matrix_b, lmbd, mu, current_W, at_times_a):
         # Computes the next estimate of A using the first gradient algorithm
         # from (Ji and Ye 2009)
         p = np.shape(matrix_a)[0]
@@ -178,7 +178,7 @@ class Linalg(object):
         W = current_W
 
         matrix_a_t = np.transpose(matrix_a)
-        utu = np.dot(matrix_a_t, matrix_a)
+        utu = at_times_a
         uv = np.dot(matrix_a_t, matrix_b)
 
         gradient = np.dot(utu,W) - uv
@@ -243,14 +243,14 @@ class Linalg(object):
         L_bound = (1+epsilon)*2*Linalg._frobenius_norm_squared(at_times_a)
         print "Bound on L is "+str(L_bound)
         # Current "guess" of the local Lipschitz constant
-        L = 100
+        L = 1000
         # Factor by which L should be increased when it happens to be too small
         gamma = 1.5
 
         #### Modification of the algorithm !
         # start with the maximum Lipschitz constant
         # (to avoid more SVDs during the increase of L)
-        # L = L_bound
+        L = L_bound
 
 
         p = matrix_a.shape[0]
@@ -259,6 +259,7 @@ class Linalg(object):
         assert_same_shape(matrix_a, matrix_b, 0)
 
 
+        print "Initial L: "+str(L)
         costs = []
         for i in range(iterations):
             print "Iteration "+str(i)
@@ -270,7 +271,7 @@ class Linalg(object):
             print "Current fitness is "+str(current_fitness)
             print "Trace norm is "+str(regularization_term)
 
-            next_W = Linalg._next_tracenorm_guess(matrix_a, matrix_b, lambda_, L, W)
+            next_W = Linalg._next_tracenorm_guess(matrix_a, matrix_b, lambda_, L, W, at_times_a)
 
             #### Modification of the algorithm !
             # as we start directly with the maximum Lipschitz constant
@@ -278,18 +279,19 @@ class Linalg(object):
 
             # print "Intermediate cost is "+str(Linalg._intermediate_cost(matrix_a, matrix_b, next_W, W, L))
 
-            while(Linalg._fitness(matrix_a, matrix_b, next_W) >
+            while False and (Linalg._fitness(matrix_a, matrix_b, next_W) >
                     Linalg._intermediate_cost(matrix_a, matrix_b, next_W, W, L)):
                 if L > L_bound:
                     print "Trace Norm Regression: numerical error detected at iteration "+str(i)
                     break
                 L = gamma * L
-                next_W = Linalg._next_tracenorm_guess(matrix_a, matrix_b, lambda_, L, W)
+                print "Increasing L to "+str(L)
+                next_W = Linalg._next_tracenorm_guess(matrix_a, matrix_b, lambda_, L, W, at_times_a)
 
             W = next_W
 
         W = np.real(W)
-        return SparseMatrix(W), costs
+        return DenseMatrix(W), costs
 
     @classmethod
     def lstsq_regression(cls, matrix_a, matrix_b, intercept=False):
