@@ -108,16 +108,17 @@ class RidgeRegressionLearner(RegressionLearner):
 
 class TracenormRegressionLearner(RegressionLearner):
     """
-    This class performs Ridge Regression.
+    This class performs Trace Norm Regression.
 
     It finds the matrix X which solves:
 
-    :math:`X = argmin(||AX - B||_2 + \\lambda||X||_2)`
+    :math:`X = argmin(||A(X - I)||_2^2 + \\lambda||X||^*)`
+
+    If B is provided, it solves:
+
+    :math:`X = argmin(||AX - B||_2^2 + \\lambda||X||^*)`
 
     It can be used with intercept or without (by default intercept=True).
-    Cross validation can be used with default :math:`\\lambda` range of
-    :math:`linspace(0, 5, 11)`. By default Generalized cross validation is performed.
-    If cross validation is set False it requires the input of a :math:`\\lambda` value.
 
     """
 
@@ -134,26 +135,27 @@ class TracenormRegressionLearner(RegressionLearner):
             self._param = param
 
         if not self._crossvalidation and self._param is None:
-            raise ValueError("Cannot run (no-crossvalidation) RidgeRegression with no lambda value!")
+            raise ValueError("Cannot run (no-crossvalidation) TracenormRegression with no lambda value!")
 
         # TODO this is temporary:
         if self._crossvalidation:
             raise ValueError("Cross validation not supported for trace norm yet")
-        if self._intercept:
-            raise ValueError("Intercept not supported yet")
 
 
 
-    def train(self, matrix_a, matrix_b):
+    def train(self, matrix_a, matrix_b=None):
         """
         If cross validation is set to True, it performs generalized
         cross validation. (Hastie, Tibshirani and Friedman, Second edition,
         page 244).
+
+        TODO: not yet!
         """
 
         if not self._crossvalidation:
-            return Linalg.tracenorm_regression(matrix_a, matrix_b, self._param, self._iterations)[0]
-
+            return Linalg.tracenorm_regression(matrix_a, matrix_b, self._param, self._iterations, self._intercept)[0]
+        elif matrix_b == None:
+            raise ValueError("Unable to perform cross-validation without a phrase space")
         else:
             min_err_param = 0
             min_err = np.Inf

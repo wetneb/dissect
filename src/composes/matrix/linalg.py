@@ -197,7 +197,7 @@ class Linalg(object):
 
 
     @staticmethod
-    def tracenorm_regression(matrix_a , matrix_b, lambda_, iterations):
+    def tracenorm_regression(matrix_a , matrix_b, lambda_, iterations, intercept=False):
         #log.print_info(logger, "In Tracenorm regression..", 4)
         #log.print_matrix_info(logger, matrix_a, 5, "Input matrix A:")
         #log.print_matrix_info(logger, matrix_b, 5, "Input matrix B:")
@@ -214,7 +214,7 @@ class Linalg(object):
 
         Args:
             matrix_a: input matrix A, of type Matrix
-            matrix_b: input matrix A, of type Matrix
+            matrix_b: input matrix A, of type Matrix. If None, it is defined as matrix_a
             lambda_: scalar, lambda parameter
             intercept: bool. If True intercept is used. Optional, default False.
 
@@ -223,10 +223,16 @@ class Linalg(object):
 
         """
 
+        if intercept:
+            matrix_a = matrix_a.hstack(matrix_type(np.ones((matrix_a.shape[0],
+                                                             1))))
+        if matrix_b == None:
+            matrix_b = matrix_a
+
         ##### Modification of the algorithm !
         # start with the ridge estimate
         print "Computing initial Ridge estimate"
-        W = Linalg.ridge_regression(matrix_a, matrix_b, 2, intercept=False)[0]
+        W = Linalg.ridge_regression(matrix_a, matrix_b, 2, intercept=intercept)[0]
 
         # TODO remove this
         matrix_a = DenseMatrix(matrix_a).mat
@@ -243,14 +249,14 @@ class Linalg(object):
         L_bound = (1+epsilon)*2*Linalg._frobenius_norm_squared(at_times_a)
         print "Bound on L is "+str(L_bound)
         # Current "guess" of the local Lipschitz constant
-        L = 1000
+        L = 2000
         # Factor by which L should be increased when it happens to be too small
         gamma = 1.5
 
         #### Modification of the algorithm !
         # start with the maximum Lipschitz constant
         # (to avoid more SVDs during the increase of L)
-        L = L_bound
+        # L = L_bound
 
 
         p = matrix_a.shape[0]
@@ -279,7 +285,7 @@ class Linalg(object):
 
             # print "Intermediate cost is "+str(Linalg._intermediate_cost(matrix_a, matrix_b, next_W, W, L))
 
-            while False and (Linalg._fitness(matrix_a, matrix_b, next_W) >
+            while (Linalg._fitness(matrix_a, matrix_b, next_W) >
                     Linalg._intermediate_cost(matrix_a, matrix_b, next_W, W, L)):
                 if L > L_bound:
                     print "Trace Norm Regression: numerical error detected at iteration "+str(i)
