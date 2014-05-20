@@ -1,5 +1,8 @@
 import numpy as np
+from os import getpid
+from subprocess import call
 from composes.matrix.linalg import Linalg
+from composes.utils.io_utils import print_tuple_list
 
 
 class RegressionLearner(object):
@@ -122,13 +125,15 @@ class TracenormRegressionLearner(RegressionLearner):
 
     """
 
-    def __init__(self, intercept=True, param_range=None, crossvalidation=True, param=None, iterations=500):
+    def __init__(self, intercept=True, param_range=None, crossvalidation=True, param=None, iterations=500, projector=True):
         self._intercept = intercept
         self._param_range = param_range if param_range else np.linspace(0.0, 5, 11)
 
         self._param = param
         self._crossvalidation = crossvalidation
         self._iterations = iterations
+        self._projector = projector
+        self._trainId = 0 # For logging purposes
 
         if param:
             self._crossvalidation = False
@@ -152,8 +157,19 @@ class TracenormRegressionLearner(RegressionLearner):
         TODO: not yet!
         """
 
+        pid = str(getpid())
+        logdir = 'convergence/'+pid
+        call(['mkdir', '-p', logdir])
+        # mkdir -p convergence/pid
+
+        self._trainId += 1 # For logging purposes
+
         if not self._crossvalidation:
-            return Linalg.tracenorm_regression(matrix_a, matrix_b, self._param, self._iterations, self._intercept)[0]
+            if self._projector:
+                matrix_b = matrix_a
+            W, costs = Linalg.tracenorm_regression(matrix_a, matrix_b, self._param, self._iterations, self._intercept)
+            print_tuple_list(costs, logdir+'/'+str(self._trainId)+'-lmbd-'+str(self._param))
+            return W
         elif matrix_b == None:
             raise ValueError("Unable to perform cross-validation without a phrase space")
         else:

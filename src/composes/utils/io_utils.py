@@ -230,6 +230,17 @@ def print_list(list_, file_name):
         for item in list_:
             f.write(item + "\n")
 
+def print_tuple_list(list_, file_name):
+    with open(file_name, 'w') as f:
+        for item in list_:
+            first = True
+            for elem in item:
+                if not first:
+                    f.write('\t')
+                else:
+                    first = False
+                f.write(str(elem))
+            f.write('\n')
 
 def print_cooc_mat_sparse_format(matrix_, id2row, id2column, file_prefix):
     matrix_file = "%s.%s" % (file_prefix, "sm")

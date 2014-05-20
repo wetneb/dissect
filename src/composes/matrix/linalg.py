@@ -184,10 +184,12 @@ class Linalg(object):
         gradient = np.dot(utu,W) - uv
         C = W - (1/mu) * gradient
         U, s, V = np.linalg.svd(C)
+        # print "Original s: "+str(s)
 
         s = s - (lmbd/(2*mu))*np.ones(np.shape(s)[0])
         sz = np.array([s, np.zeros(np.shape(s)[0])])
         final_s = sz.max(0)
+        # print "Final s: "+str(final_s)
         lu = np.shape(U)[1]
         lv = np.shape(V)[0]
         S = np.zeros((lu, lv), dtype=complex)
@@ -197,7 +199,7 @@ class Linalg(object):
 
 
     @staticmethod
-    def tracenorm_regression(matrix_a , matrix_b, lambda_, iterations, intercept=False):
+    def tracenorm_regression(matrix_a , matrix_b, lmbd_, iterations, intercept=False):
         #log.print_info(logger, "In Tracenorm regression..", 4)
         #log.print_matrix_info(logger, matrix_a, 5, "Input matrix A:")
         #log.print_matrix_info(logger, matrix_b, 5, "Input matrix B:")
@@ -231,13 +233,17 @@ class Linalg(object):
 
         ##### Modification of the algorithm !
         # start with the ridge estimate
-        print "Computing initial Ridge estimate"
-        W = Linalg.ridge_regression(matrix_a, matrix_b, 2, intercept=intercept)[0]
+        W = np.zeros([matrix_a.shape[1],matrix_a.shape[1]])
+        #Linalg.ridge_regression(matrix_a, matrix_b, 2, intercept=intercept)[0]
 
         # TODO remove this
         matrix_a = DenseMatrix(matrix_a).mat
         matrix_b = DenseMatrix(matrix_b).mat
-        W = DenseMatrix(W).mat
+
+        # Matrix shapes
+        p = matrix_a.shape[0]
+        q = matrix_a.shape[1]
+        assert_same_shape(matrix_a, matrix_b, 0)
 
         # Sub-expressions reused at various places in the code
         matrix_a_t = matrix_a.transpose()
@@ -247,35 +253,24 @@ class Linalg(object):
         epsilon = 0.05
         # Expression of the bound of the Lipschitz constant of the cost function
         L_bound = (1+epsilon)*2*Linalg._frobenius_norm_squared(at_times_a)
-        print "Bound on L is "+str(L_bound)
         # Current "guess" of the local Lipschitz constant
         L = 2000
         # Factor by which L should be increased when it happens to be too small
         gamma = 1.5
+        # Real lambda: resized according to the number of training samples (?)
+        lambda_ = lmbd*p
 
         #### Modification of the algorithm !
         # start with the maximum Lipschitz constant
         # (to avoid more SVDs during the increase of L)
         # L = L_bound
 
-
-        p = matrix_a.shape[0]
-        q = matrix_a.shape[1]
-        # r = q
-        assert_same_shape(matrix_a, matrix_b, 0)
-
-
-        print "Initial L: "+str(L)
         costs = []
         for i in range(iterations):
-            print "Iteration "+str(i)
             current_fitness = Linalg._fitness(matrix_a, matrix_b, W)
             regularization_term = Linalg._tracenorm(W)
             current_cost = current_fitness + lambda_ * regularization_term
-            costs.append(current_cost)
-            print "Current cost is "+str(current_cost)
-            print "Current fitness is "+str(current_fitness)
-            print "Trace norm is "+str(regularization_term)
+            costs.append([L, L_bound, current_fitness, current_cost])
 
             next_W = Linalg._next_tracenorm_guess(matrix_a, matrix_b, lambda_, L, W, at_times_a)
 
@@ -291,7 +286,6 @@ class Linalg(object):
                     print "Trace Norm Regression: numerical error detected at iteration "+str(i)
                     break
                 L = gamma * L
-                print "Increasing L to "+str(L)
                 next_W = Linalg._next_tracenorm_guess(matrix_a, matrix_b, lambda_, L, W, at_times_a)
 
             W = next_W
