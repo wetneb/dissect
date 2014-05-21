@@ -199,7 +199,7 @@ class Linalg(object):
 
 
     @staticmethod
-    def tracenorm_regression(matrix_a , matrix_b, lmbd_, iterations, intercept=False):
+    def tracenorm_regression(matrix_a , matrix_b, lmbd, iterations, intercept=False):
         #log.print_info(logger, "In Tracenorm regression..", 4)
         #log.print_matrix_info(logger, matrix_a, 5, "Input matrix A:")
         #log.print_matrix_info(logger, matrix_b, 5, "Input matrix B:")
@@ -259,6 +259,9 @@ class Linalg(object):
         gamma = 1.5
         # Real lambda: resized according to the number of training samples (?)
         lambda_ = lmbd*p
+        # Variables used for the accelerated algorithm (check the original paper)
+        Z = W
+        alpha = 1
 
         #### Modification of the algorithm !
         # start with the maximum Lipschitz constant
@@ -288,7 +291,11 @@ class Linalg(object):
                 L = gamma * L
                 next_W = Linalg._next_tracenorm_guess(matrix_a, matrix_b, lambda_, L, W, at_times_a)
 
+            previous_W = W
             W = next_W
+            previous_alpha = alpha
+            alpha = (1 + sqrt(1 + 4*alpha*alpha))/2
+            Z = W + ((alpha - 1)/alpha)*(W - previous_W)
 
         W = np.real(W)
         return DenseMatrix(W), costs
