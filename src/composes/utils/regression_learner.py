@@ -1,9 +1,9 @@
 import numpy as np
 from os import getpid
 from subprocess import call
+from composes.matrix.dense_matrix import DenseMatrix
 from composes.matrix.linalg import Linalg
 from composes.utils.io_utils import print_tuple_list
-
 
 class RegressionLearner(object):
     """

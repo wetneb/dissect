@@ -184,12 +184,10 @@ class Linalg(object):
         gradient = np.dot(utu,W) - uv
         C = W - (1/mu) * gradient
         U, s, V = np.linalg.svd(C)
-        # print "Original s: "+str(s)
 
         s = s - (lmbd/(2*mu))*np.ones(np.shape(s)[0])
         sz = np.array([s, np.zeros(np.shape(s)[0])])
         final_s = sz.max(0)
-        # print "Final s: "+str(final_s)
         lu = np.shape(U)[1]
         lv = np.shape(V)[0]
         S = np.zeros((lu, lv), dtype=complex)
@@ -254,7 +252,7 @@ class Linalg(object):
         # Expression of the bound of the Lipschitz constant of the cost function
         L_bound = (1+epsilon)*2*Linalg._frobenius_norm_squared(at_times_a)
         # Current "guess" of the local Lipschitz constant
-        L = 2000
+        L = 1
         # Factor by which L should be increased when it happens to be too small
         gamma = 1.5
         # Real lambda: resized according to the number of training samples (?)
@@ -275,7 +273,7 @@ class Linalg(object):
             current_cost = current_fitness + lambda_ * regularization_term
             costs.append([L, L_bound, current_fitness, current_cost])
 
-            next_W = Linalg._next_tracenorm_guess(matrix_a, matrix_b, lambda_, L, W, at_times_a)
+            next_W = Linalg._next_tracenorm_guess(matrix_a, matrix_b, lambda_, L, Z, at_times_a)
 
             #### Modification of the algorithm !
             # as we start directly with the maximum Lipschitz constant
@@ -284,18 +282,19 @@ class Linalg(object):
             # print "Intermediate cost is "+str(Linalg._intermediate_cost(matrix_a, matrix_b, next_W, W, L))
 
             while (Linalg._fitness(matrix_a, matrix_b, next_W) >
-                    Linalg._intermediate_cost(matrix_a, matrix_b, next_W, W, L)):
+                    Linalg._intermediate_cost(matrix_a, matrix_b, next_W, Z, L)):
                 if L > L_bound:
                     print "Trace Norm Regression: numerical error detected at iteration "+str(i)
                     break
                 L = gamma * L
-                next_W = Linalg._next_tracenorm_guess(matrix_a, matrix_b, lambda_, L, W, at_times_a)
+                next_W = Linalg._next_tracenorm_guess(matrix_a, matrix_b, lambda_, L, Z, at_times_a)
 
             previous_W = W
             W = next_W
             previous_alpha = alpha
             alpha = (1 + sqrt(1 + 4*alpha*alpha))/2
-            Z = W + ((alpha - 1)/alpha)*(W - previous_W)
+            Z = W
+            # Z = W + ((alpha - 1)/alpha)*(W - previous_W)
 
         W = np.real(W)
         return DenseMatrix(W), costs
