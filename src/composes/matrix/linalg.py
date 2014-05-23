@@ -287,7 +287,8 @@ class Linalg(object):
             last_cost = current_cost
             current_fitness = Linalg._fitness(matrix_a, matrix_b, next_W)
             current_cost = current_fitness + lambda_ * tracenorm
-            cost_list =  [L, L_bound, current_fitness, current_cost]
+            if iter_counter > 0: # The first scores are messy
+                cost_list =  [L, L_bound, current_fitness, current_cost]
             costs.append(cost_list)
 
             #### Modification of the algorithm !
