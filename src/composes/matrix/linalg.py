@@ -284,9 +284,8 @@ class Linalg(object):
                 linalg_error_caught = True
                 break
 
-            last_fitness = current_fitness
+            last_cost = current_cost
             current_fitness = Linalg._fitness(matrix_a, matrix_b, next_W)
-
             current_cost = current_fitness + lambda_ * tracenorm
             cost_list =  [L, L_bound, current_fitness, current_cost]
             costs.append(cost_list)
@@ -308,7 +307,8 @@ class Linalg(object):
                     break
 
                 last_cost = current_cost
-                current_cost = Linalg._fitness(matrix_a, matrix_a, next_W) + lambda_*tracenorm
+                current_fitness = Linalg._fitness(matrix_a, matrix_a, next_W)
+                current_cost = current_fitness + lambda_*tracenorm
 
             if linalg_error_caught:
                 break
