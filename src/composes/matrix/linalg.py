@@ -10,7 +10,7 @@ import scipy.linalg as splinalg
 from sparsesvd import sparsesvd
 from warnings import warn
 from time import time
-from math import sqrt
+from math import sqrt, log10
 from numpy.linalg import LinAlgError
 from composes.matrix.matrix import Matrix
 from composes.matrix.dense_matrix import DenseMatrix
@@ -197,6 +197,20 @@ class Linalg(object):
         S[:rk,:rk] = np.diag(final_s)
         return np.dot(U, np.dot(S, V)), ssum
 
+    @staticmethod
+    def _kronecker_product(matrix_a):
+        """
+        Computes the sum over the lines of A of the kronecker product of the line
+        with itself
+        """
+        result = np.zeros([matrix_a.shape[1],matrix_a.shape[1]])
+        for i in range(matrix_a.shape[0]):
+            vec = matrix_a[i,:]
+            vec_norm2 = Linalg._frobenius_norm_squared(vec)
+            vec = np.array(vec)
+            outer_prod = np.dot(vec.transpose(),vec)
+            result += (1/vec_norm2) * outer_prod
+        return result
 
     @staticmethod
     def tracenorm_regression(matrix_a , matrix_b, lmbd, iterations, intercept=False):
@@ -231,11 +245,7 @@ class Linalg(object):
         if matrix_b == None:
             matrix_b = matrix_a
 
-        ##### Modification of the algorithm !
-        # start with the ridge estimate
-        W = np.zeros([matrix_a.shape[1],matrix_a.shape[1]])
-        #Linalg.ridge_regression(matrix_a, matrix_b, 2, intercept=intercept)[0]
-
+        
         # TODO remove this
         matrix_a = DenseMatrix(matrix_a).mat
         matrix_b = DenseMatrix(matrix_b).mat
@@ -244,6 +254,9 @@ class Linalg(object):
         p = matrix_a.shape[0]
         q = matrix_a.shape[1]
         assert_same_shape(matrix_a, matrix_b, 0)
+
+        # Initialization of the algorithm
+        W = (1/p) * Linalg._kronecker_product(matrix_a)
 
         # Sub-expressions reused at various places in the code
         matrix_a_t = matrix_a.transpose()
@@ -269,11 +282,6 @@ class Linalg(object):
         linalg_error_caught = False
 
 
-        #### Modification of the algorithm !
-        # start with the maximum Lipschitz constant
-        # (to avoid more SVDs during the increase of L)
-        # L = L_bound
-
         costs = []
         iter_counter = 0
         while iter_counter < iterations and abs((current_cost - last_cost)/last_cost)>epsilon and not linalg_error_caught:
@@ -289,7 +297,7 @@ class Linalg(object):
             current_cost = current_fitness + lambda_ * tracenorm
             if iter_counter > 0: # The first scores are messy
                 cost_list =  [L, L_bound, current_fitness, current_cost]
-            costs.append(cost_list)
+                costs.append(cost_list)
 
             #### Modification of the algorithm !
             # as we start directly with the maximum Lipschitz constant
