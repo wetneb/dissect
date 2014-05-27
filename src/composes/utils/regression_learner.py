@@ -109,6 +109,21 @@ class RidgeRegressionLearner(RegressionLearner):
                                            self._intercept)[0]
 
 
+class KroneckerLearner(RegressionLearner):
+    """
+    This class implements the learning strategy of Grefenstette & Sadrzadeh 2011
+    """
+    def __init__(self):
+        self._intercept = False
+
+    def train(self, matrix_a, matrix_b=None):
+        """
+        matrix_b is ignored
+        """
+        W = Linalg.kronecker_product(matrix_a)
+        return W
+
+
 class TracenormRegressionLearner(RegressionLearner):
     """
     This class performs Trace Norm Regression.

@@ -213,6 +213,14 @@ class Linalg(object):
         return result
 
     @staticmethod
+    def kronecker_product(matrix_a):
+        """
+        Public version (using the Matrix interface) of the _kronecker_product function
+        """
+        m = DenseMatrix(matrix_a).mat
+        return DenseMatrix(Linalg._kronecker_product(m))
+
+    @staticmethod
     def tracenorm_regression(matrix_a , matrix_b, lmbd, iterations, intercept=False):
         #log.print_info(logger, "In Tracenorm regression..", 4)
         #log.print_matrix_info(logger, matrix_a, 5, "Input matrix A:")
