@@ -146,9 +146,9 @@ class Linalg(object):
     def _intermediate_cost(matrix_a, matrix_b, new_W, old_W, mu):
         diff_W = new_W - old_W
         grad_f = Linalg._fitness_gradient(matrix_a, matrix_b, old_W)
-        return (Linalg._fitness(matrix_a, matrix_b, old_W) +
+        return np.real((Linalg._fitness(matrix_a, matrix_b, old_W) +
                 np.trace(np.dot(diff_W.transpose(), grad_f)) +
-                (mu/2)*Linalg._frobenius_norm_squared(diff_W))
+                (mu/2)*Linalg._frobenius_norm_squared(diff_W)))
 
     @staticmethod # numpy inputs
     def _frobenius_norm_squared(W):
@@ -278,6 +278,8 @@ class Linalg(object):
         L = 1
         # Factor by which L should be increased when it happens to be too small
         gamma = 1.2
+        # Epsilon to ensure that mu is increased when the inequality hold tightly
+        epsilon_cost = 0.01
         # Real lambda: resized according to the number of training samples (?)
         lambda_ = lmbd*p
         # Variables used for the accelerated algorithm (check the original paper)
@@ -292,11 +294,12 @@ class Linalg(object):
 
         costs = []
         iter_counter = 0
-        while iter_counter < iterations and abs((current_cost - last_cost)/last_cost)>epsilon and not linalg_error_caught:
+        while iter_counter < iterations and (iter_counter <= 10 or abs((current_cost - last_cost)/last_cost)>epsilon) and not linalg_error_caught:
             # Cost tracking
             try:
                 next_W, tracenorm = Linalg._next_tracenorm_guess(matrix_a, matrix_b, lambda_, L, Z, at_times_a)
             except LinAlgError:
+                print "LinAlgError caught in trace norm regression"
                 linalg_error_caught = True
                 break
 
@@ -311,7 +314,7 @@ class Linalg(object):
             # as we start directly with the maximum Lipschitz constant
             # we don't need to perform the following check
             # print "Intermediate cost is "+str(Linalg._intermediate_cost(matrix_a, matrix_b, next_W, W, L))
-            while (current_fitness >
+            while (current_fitness + epsilon_cost >=
                     Linalg._intermediate_cost(matrix_a, matrix_b, next_W, Z, L)):
                 if L > L_bound:
                     print "Trace Norm Regression: numerical error detected at iteration "+str(iter_counter)
@@ -320,6 +323,7 @@ class Linalg(object):
                 try:
                     next_W, tracenorm = Linalg._next_tracenorm_guess(matrix_a, matrix_b, lambda_, L, Z, at_times_a)
                 except LinAlgError:
+                    print "LinAlgError caught in trace norm regression"
                     linalg_error_caught = True
                     break
 
