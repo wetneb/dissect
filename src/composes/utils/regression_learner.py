@@ -123,6 +123,17 @@ class KroneckerLearner(RegressionLearner):
         W = Linalg.kronecker_product(matrix_a)
         return W
 
+class IdentityLearner(RegressionLearner):
+    def __init__(self):
+        self._intercept = False
+
+    def train(self, matrix_a, matrix_b=None):
+        """
+        matrix_b is ignored
+        """
+        W = DenseMatrix.identity(matrix_a.shape[1])
+        return W
+
 
 class TracenormRegressionLearner(RegressionLearner):
     """
