@@ -213,6 +213,49 @@ class CompositionModel(object):
 
         return list1, list2, list3
 
+    def valid_data_to_lists_4(self, data, (row2id1, row2id2, row2id3, row2id4)):
+        """
+        TO BE MOVED TO A UTILS MODULE!
+        """
+        list1 = []
+        list2 = []
+        list3 = []
+        list4 = []
+
+        j = 0
+        for i in xrange(len(data)):
+            sample = data[i]
+
+            cond = True
+
+            if not row2id1 is None:
+                cond = cond and sample[0] in row2id1
+
+            if not row2id2 is None:
+                cond = cond and sample[1] in row2id2
+
+            if not row2id3 is None:
+                cond = cond and sample[2] in row2id3
+
+            if not row2id4 is None:
+                cond = cond and sample[2] in row2id3
+
+            if cond:
+                list1.append(sample[0])
+                list2.append(sample[1])
+                list3.append(sample[2])
+                list4.append(sample[3])
+                j += 1
+
+        if i + 1 != j:
+            warn("%d (out of %d) lines are ignored because one of the elements is not found in its semantic space"
+                 % ((i + 1) - j, (i + 1)))
+
+        if not list1:
+            raise ValueError("No valid data found for training/composition!")
+
+        return list1, list2, list3, list4
+
     def export(self, filename):
         """
         Prints the parameters of the composition model to file.

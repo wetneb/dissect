@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 class Linalg(object):
     """
-    Contains a set of liniar algebra utilities defined to work both with sparse and
+    Contains a set of linear algebra utilities defined to work both with sparse and
     with dense matrices as an input (i.e. with objects of type SparseMatrix/DenseMatrix).
 
     Implements:

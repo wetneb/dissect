@@ -77,7 +77,11 @@ class LexicalFunction(CompositionModel):
 
         Args:
             train_data: list of string tuples. Each tuple contains 3
-            string elements: (function_word, arg, phrase).
+            string elements: (function_word, arg, phrase), and one optional
+            integer element, indicating how often this phrase appears.
+            This is used to weight the corresponding vectors (the weight is
+            the square root of the count) so that the squared norm of the
+            cost is weighted in a regression setting.
 
             arg_space: argument space, of type Space. arg elements of
             train data are interpreted in this space.
@@ -104,11 +108,24 @@ class LexicalFunction(CompositionModel):
 
         result_mats = []
 
-        train_data = sorted(train_data, key=lambda tup: tup[0])
-        function_word_list, arg_list, phrase_list = self.valid_data_to_lists(train_data,
+        train_data_no_weights = sorted(train_data, key=lambda tup: tup[0])
+        train_data = []
+        for tup in train_data_no_weights:
+            if len(tup) == 4:
+                if type(tup[3]) != int or tup[3] <= 0:
+                    raise ValueError("Invalid weight for a phrase: "+str(tup[3]))
+                train_data.append(tup)
+            elif len(tup) == 3:
+                a, b, c = tup
+                train_data.append((a,b,c,1))
+            else:
+                raise ValueError("Invalid tuple in train data")
+
+        function_word_list, arg_list, phrase_list, counts_list = self.valid_data_to_lists(train_data,
                                                                              (None,
                                                                               arg_space.row2id,
-                                                                              phrase_space.row2id))
+                                                                              phrase_space.row2id,
+                                                                              None))
         #partitions the sorted input data
         keys, key_ranges = get_partitions(function_word_list, self._MIN_SAMPLES)
 
@@ -130,11 +147,15 @@ class LexicalFunction(CompositionModel):
 
             arg_mat = arg_space.get_rows(arg_list[idx_beg:idx_end])
             phrase_mat = phrase_space.get_rows(phrase_list[idx_beg:idx_end])
+            weights_mat = SparseMatrix(np.diag(np.sqrt(np.array(counts_list[idx_beg:idx_end]))))
 
             #convert them to the same type
             matrix_type = get_type_of_largest([arg_mat, phrase_mat])
-            [arg_mat, phrase_mat] = resolve_type_conflict([arg_mat, phrase_mat],
+            [arg_mat, phrase_mat, weights_mat] = resolve_type_conflict([arg_mat, phrase_mat, weights_mat],
                                                           matrix_type)
+            # Apply the weights
+            arg_mat = weights_mat * arg_mat
+            phrase_mat = weights_mat * phrase_mat
 
             result_mat = self._regression_learner.train(arg_mat, phrase_mat).transpose()
 
