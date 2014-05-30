@@ -109,6 +109,16 @@ def read_tuple_list(data_file, fields=None):
 
     return result
 
+def convert_field_to_int(tuple_list, field):
+    result = []
+    for tup in tuple_list:
+        try:
+            new_tup = list(tup)
+            new_tup[field] = int(tup[field])
+            result.append(tuple(new_tup))
+        except ValueError:
+            raise ValueError("Cannot convert field %d, with value \"%s\", to int" % (field,tup[field]))
+    return result
 
 def read_list(file_name, **kwargs):
     field = None

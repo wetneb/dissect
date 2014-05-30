@@ -8,6 +8,7 @@ import numpy as np
 import time
 from composition_model import CompositionModel
 from composes.semantic_space.space import Space
+from composes.matrix.dense_matrix import DenseMatrix
 from composes.utils.gen_utils import get_partitions
 from composes.utils.regression_learner import LstsqRegressionLearner
 from composes.utils.regression_learner import RegressionLearner
@@ -121,7 +122,7 @@ class LexicalFunction(CompositionModel):
             else:
                 raise ValueError("Invalid tuple in train data")
 
-        function_word_list, arg_list, phrase_list, counts_list = self.valid_data_to_lists(train_data,
+        function_word_list, arg_list, phrase_list, counts_list = self.valid_data_to_lists_4(train_data,
                                                                              (None,
                                                                               arg_space.row2id,
                                                                               phrase_space.row2id,
@@ -147,7 +148,7 @@ class LexicalFunction(CompositionModel):
 
             arg_mat = arg_space.get_rows(arg_list[idx_beg:idx_end])
             phrase_mat = phrase_space.get_rows(phrase_list[idx_beg:idx_end])
-            weights_mat = SparseMatrix(np.diag(np.sqrt(np.array(counts_list[idx_beg:idx_end]))))
+            weights_mat = DenseMatrix(np.diag(np.sqrt(np.array(counts_list[idx_beg:idx_end]))))
 
             #convert them to the same type
             matrix_type = get_type_of_largest([arg_mat, phrase_mat])
