@@ -10,6 +10,7 @@ import scipy.linalg as splinalg
 from sparsesvd import sparsesvd
 from warnings import warn
 from time import time
+import sys
 from math import sqrt, log10
 from numpy.linalg import LinAlgError
 from composes.matrix.matrix import Matrix
@@ -184,12 +185,14 @@ class Linalg(object):
 
         gradient = np.dot(utu,W) - uv
         C = W - (1/mu) * gradient
+        if lmbd == 0:
+            return C, 0
         U, s, V = np.linalg.svd(C)
-        ssum = sum(s)
 
         s = s - (lmbd/(2*mu))*np.ones(np.shape(s)[0])
         sz = np.array([s, np.zeros(np.shape(s)[0])])
         final_s = sz.max(0)
+        ssum = sum(final_s)
         lu = np.shape(U)[1]
         lv = np.shape(V)[0]
         S = np.zeros((lu, lv), dtype=complex)
@@ -264,7 +267,7 @@ class Linalg(object):
         assert_same_shape(matrix_a, matrix_b, 0)
 
         # Initialization of the algorithm
-        W = (1/p) * Linalg._kronecker_product(matrix_a)
+        W = (1.0/p)* Linalg._kronecker_product(matrix_a)
 
         # Sub-expressions reused at various places in the code
         matrix_a_t = matrix_a.transpose()
@@ -275,26 +278,26 @@ class Linalg(object):
         # Expression of the bound of the Lipschitz constant of the cost function
         L_bound = (1+epsilon_lbound)*2*Linalg._frobenius_norm_squared(at_times_a)
         # Current "guess" of the local Lipschitz constant
-        L = 1
+        L = 1.0
         # Factor by which L should be increased when it happens to be too small
         gamma = 1.2
         # Epsilon to ensure that mu is increased when the inequality hold tightly
-        epsilon_cost = 0.01
+        epsilon_cost = 0.00001
         # Real lambda: resized according to the number of training samples (?)
         lambda_ = lmbd*p
         # Variables used for the accelerated algorithm (check the original paper)
         Z = W
-        alpha = 1
+        alpha = 1.0
         # Halting condition
         epsilon = 0.00001
         last_cost = 1
         current_cost = -1
         linalg_error_caught = False
 
-
         costs = []
         iter_counter = 0
-        while iter_counter < iterations and (iter_counter <= 10 or abs((current_cost - last_cost)/last_cost)>epsilon) and not linalg_error_caught:
+        while iter_counter < iterations and (abs((current_cost - last_cost)/last_cost)>epsilon) and not linalg_error_caught:
+            sys.stdout.flush()
             # Cost tracking
             try:
                 next_W, tracenorm = Linalg._next_tracenorm_guess(matrix_a, matrix_b, lambda_, L, Z, at_times_a)
@@ -310,10 +313,6 @@ class Linalg(object):
                 cost_list =  [L, L_bound, current_fitness, current_cost]
                 costs.append(cost_list)
 
-            #### Modification of the algorithm !
-            # as we start directly with the maximum Lipschitz constant
-            # we don't need to perform the following check
-            # print "Intermediate cost is "+str(Linalg._intermediate_cost(matrix_a, matrix_b, next_W, W, L))
             while (current_fitness + epsilon_cost >=
                     Linalg._intermediate_cost(matrix_a, matrix_b, next_W, Z, L)):
                 if L > L_bound:
@@ -337,11 +336,12 @@ class Linalg(object):
             previous_W = W
             W = next_W
             previous_alpha = alpha
-            alpha = (1 + sqrt(1 + 4*alpha*alpha))/2
+            alpha = (1.0 + sqrt(1.0 + 4.0*alpha*alpha))/2.0
             Z = W
             # Z = W + ((alpha - 1)/alpha)*(W - previous_W)
             iter_counter += 1
 
+        sys.stdout.flush()
         W = np.real(W)
         return DenseMatrix(W), costs
 
