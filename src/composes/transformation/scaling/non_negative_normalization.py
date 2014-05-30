@@ -14,7 +14,8 @@ class NonNegativeNormalization(Scaling):
     _name = "non_negative_normalization"
 
     def apply(self, matrix_):
-        matrix_.to_non_negative()
-        return matrix_
+        matrix = matrix_.copy()
+        matrix.to_non_negative()
+        return matrix
 
 
